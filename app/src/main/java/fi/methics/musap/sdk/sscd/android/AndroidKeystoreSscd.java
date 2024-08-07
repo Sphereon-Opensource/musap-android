@@ -5,7 +5,8 @@ import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
 import android.util.Base64;
 
-import org.bouncycastle.jce.provider.BouncyCastleProvider;
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 
 import java.io.IOException;
 import java.security.GeneralSecurityException;
@@ -13,12 +14,14 @@ import java.security.KeyPair;
 import java.security.KeyPairGenerator;
 import java.security.KeyStore;
 import java.security.PrivateKey;
+import java.security.SecureRandom;
 import java.security.Security;
 import java.security.Signature;
 import java.security.spec.AlgorithmParameterSpec;
 import java.security.spec.ECGenParameterSpec;
 import java.security.spec.RSAKeyGenParameterSpec;
 import java.util.Arrays;
+import java.util.List;
 
 import fi.methics.musap.sdk.api.MusapConstants;
 import fi.methics.musap.sdk.attestation.AndroidKeyAttestation;
@@ -38,12 +41,21 @@ import fi.methics.musap.sdk.internal.sign.SignatureReq;
 import fi.methics.musap.sdk.internal.util.IdGenerator;
 import fi.methics.musap.sdk.internal.util.MLog;
 
+import javax.crypto.Cipher;
+import javax.crypto.KeyGenerator;
+import javax.crypto.SecretKey;
+import javax.crypto.spec.GCMParameterSpec;
+
 /**
  * MUSAP SSCD implementation for Android KeyStore
  * Note that this SSCD does not ask for authentication by default.
- * Authentication can be configure with step-up authentication policy.
+ * Authentication can be configured with step-up authentication policy.
  */
 public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSettings> {
+
+    private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
+    private static final String AES_ALGORITHM = "AES/GCM/NoPadding";
+    private static final int GCM_TAG_LENGTH = 256;
 
     private Context context;
 
@@ -61,60 +73,112 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         // Use generateKey instead.
         throw new UnsupportedOperationException();
     }
-
+    
     @Override
     public MusapKey generateKey(KeyGenReq req) throws Exception {
 
         Security.removeProvider("BC");
         MLog.d("Remove provider");
         SscdInfo sscd = this.getSscdInfo();
-        String                algorithm = this.resolveAlgorithm(req);
+        String algorithm = this.resolveAlgorithm(req);
         AlgorithmParameterSpec algSspec = this.resolveAlgorithmParameterSpec(req);
 
         MLog.d("Generating with algorithm " + algorithm);
 
-        KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(req.getKeyAlias(),
-                KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY)
-                .setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
-                .setSignaturePaddings(
-                        KeyProperties.SIGNATURE_PADDING_RSA_PKCS1,
-                        KeyProperties.SIGNATURE_PADDING_RSA_PSS);
+        int purposes = 0;
+        if (req.getKeyUsage().contains("ENCRYPT") || req.getKeyUsage().contains("encrypt")) {
+            purposes |= KeyProperties.PURPOSE_ENCRYPT;
+        }
+        if (req.getKeyUsage().contains("DECRYPT") || req.getKeyUsage().contains("decrypt")) {
+            purposes |= KeyProperties.PURPOSE_DECRYPT;
+        }
+        if (req.getKeyUsage().contains("SIGN") || req.getKeyUsage().contains("sign")) {
+            purposes |= KeyProperties.PURPOSE_SIGN;
+        }
+        if (req.getKeyUsage().contains("VERIFY") || req.getKeyUsage().contains("verify")) {
+            purposes |= KeyProperties.PURPOSE_VERIFY;
+        }
+        if (purposes == 0) {
+            purposes = KeyProperties.PURPOSE_SIGN | KeyProperties.PURPOSE_VERIFY;
+        }
+
+        KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(req.getKeyAlias(), purposes);
+
+        // If the key is for signing, configure the signature settings
+        if ((purposes & KeyProperties.PURPOSE_SIGN) != 0 || (purposes & KeyProperties.PURPOSE_VERIFY) != 0) {
+            builder.setDigests(KeyProperties.DIGEST_SHA256, KeyProperties.DIGEST_SHA512)
+                    .setSignaturePaddings(
+                            KeyProperties.SIGNATURE_PADDING_RSA_PKCS1,
+                            KeyProperties.SIGNATURE_PADDING_RSA_PSS);
+        }
+
+        // If the key is for encryption, configure the encryption settings
+        if ((purposes & KeyProperties.PURPOSE_ENCRYPT) != 0 || (purposes & KeyProperties.PURPOSE_DECRYPT) != 0) {
+            builder.setBlockModes(KeyProperties.BLOCK_MODE_GCM)
+                    .setEncryptionPaddings(KeyProperties.ENCRYPTION_PADDING_NONE)
+                    .setKeySize(256);  // Example for AES
+        }
 
         if (algSspec != null) {
             builder.setAlgorithmParameterSpec(algSspec);
             MLog.d("Algorithm spec " + algSspec);
         } else {
-            MLog.d("No algoritm spec given");
+            MLog.d("No algorithm spec given");
+        }
+
+        if(req.isUserAuthenticationRequired()) {
+            builder.setUserAuthenticationRequired(true);
+            builder.setUserAuthenticationValidityDurationSeconds(90); // TODO configurable? (not available on iOS)
         }
 
         KeyGenParameterSpec spec = builder.build();
         MLog.d("Algorithm spec " + spec);
+        
+        // Handle symmetric and asymmetric key generation based on the algorithm
+        if (KeyProperties.KEY_ALGORITHM_AES.equalsIgnoreCase(algorithm)) {
+            KeyGenerator keyGenerator = KeyGenerator.getInstance(algorithm, ANDROID_KEYSTORE);
+            keyGenerator.init(spec);
+            keyGenerator.generateKey();
 
-        KeyPairGenerator kpg = KeyPairGenerator.getInstance(algorithm, "AndroidKeyStore");
-        kpg.initialize(spec);
+            final MusapKey generatedKey = new MusapKey.Builder()
+                    .setSscdType(MusapConstants.ANDROID_KS_TYPE)
+                    .setKeyAlias(req.getKeyAlias())
+                    .setSscdId(sscd.getSscdId())
+                    .setLoa(Arrays.asList(MusapLoA.EIDAS_SUBSTANTIAL, MusapLoA.ISO_LOA3))
+                    .setKeyId(IdGenerator.generateKeyId())
+                    .setAlgorithm(req.getAlgorithm())
+                    .setKeyUsages(List.of(req.getKeyUsage().split("[,;]")))
+                    .build();
+            MLog.d("Generated symmetric key with KeyURI " + generatedKey.getKeyUri());
 
-        KeyPair keyPair = kpg.generateKeyPair();
-        MLog.d("Key generation successful");
+            return generatedKey;
+        } else {
+            KeyPairGenerator kpg = KeyPairGenerator.getInstance(algorithm, ANDROID_KEYSTORE);
+            kpg.initialize(spec);
+            KeyPair keyPair = kpg.generateKeyPair();
+            MLog.d("Key generation successful");
 
-        MusapKey generatedKey = new MusapKey.Builder()
-                .setSscdType(MusapConstants.ANDROID_KS_TYPE)
-                .setKeyAlias(req.getKeyAlias())
-                .setSscdId(sscd.getSscdId())
-                .setLoa(Arrays.asList(MusapLoA.EIDAS_SUBSTANTIAL, MusapLoA.ISO_LOA3))
-                .setPublicKey(new PublicKey(keyPair))
-                .setKeyId(IdGenerator.generateKeyId())
-                .setAlgorithm(req.getAlgorithm())
-                .build();
-        MLog.d("Generated key with KeyURI " + generatedKey.getKeyUri());
+            MusapKey generatedKey = new MusapKey.Builder()
+                    .setSscdType(MusapConstants.ANDROID_KS_TYPE)
+                    .setKeyAlias(req.getKeyAlias())
+                    .setSscdId(sscd.getSscdId())
+                    .setLoa(Arrays.asList(MusapLoA.EIDAS_SUBSTANTIAL, MusapLoA.ISO_LOA3))
+                    .setPublicKey(new PublicKey(keyPair))
+                    .setKeyId(IdGenerator.generateKeyId())
+                    .setAlgorithm(req.getAlgorithm())
+                    .build();
+            MLog.d("Generated key with KeyURI " + generatedKey.getKeyUri());
 
-        return generatedKey;
+            return generatedKey;
+        }
     }
+
 
     @Override
     public MusapSignature sign(SignatureReq req) throws GeneralSecurityException, IOException {
         String alias = req.getKey().getKeyAlias();
         Security.removeProvider("BC");
-        KeyStore ks = KeyStore.getInstance("AndroidKeyStore");
+        KeyStore ks = KeyStore.getInstance(ANDROID_KEYSTORE);
 
         ks.load(null);
         KeyStore.Entry entry = ks.getEntry(alias, null);
@@ -167,6 +231,70 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         return new AndroidKeyAttestation();
     }
 
+    @Override
+    public byte[] encryptData(EncryptionReq encryptionReq) throws Exception {
+        final KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+        keyStore.load(null);
+
+        final SecretKey secretKey = (SecretKey) keyStore.getKey(encryptionReq.getKey().getKeyAlias(), null);
+        
+        final Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        final byte[] iv = cipher.getIV();
+        SecureRandom random = new SecureRandom();
+        random.nextBytes(iv);
+        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey, spec);
+
+        byte[] dataToEncrypt;
+        if (encryptionReq.getSalt() != null) {
+            dataToEncrypt = concatenate(encryptionReq.getSalt(), encryptionReq.getData());
+        } else {
+            dataToEncrypt = encryptionReq.getData();
+        }
+
+        final byte[] encryptedData = cipher.doFinal(dataToEncrypt);
+
+        return concatenate(iv, encryptedData);
+    }
+
+    @Override
+    public byte[] decryptData(DecryptionReq decryptionReq) throws Exception {
+        final KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
+        keyStore.load(null);
+
+        SecretKey secretKey = (SecretKey) keyStore.getKey(decryptionReq.getKey().getKeyAlias(), null);
+
+        final Cipher cipher = Cipher.getInstance(AES_ALGORITHM); // FIXME dedup with encryptData
+        final byte[] iv = cipher.getIV();
+        System.arraycopy(decryptionReq.getData(), 0, iv, 0, iv.length);
+
+        final GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+        cipher.init(Cipher.DECRYPT_MODE, secretKey, spec);
+
+        final byte[] decryptedData = cipher.doFinal(decryptionReq.getData(), iv.length, decryptionReq.getData().length - iv.length);
+
+        // Handle salt if necessary
+        if (decryptionReq.getSalt() != null) {
+            final int saltLength = decryptionReq.getSalt().length;
+            return removeSalt(decryptedData, saltLength);
+        } else {
+            return decryptedData;
+        }
+    }
+
+    private byte[] concatenate(byte[] salt, byte[] data) {
+        byte[] result = new byte[salt.length + data.length];
+        System.arraycopy(salt, 0, result, 0, salt.length);
+        System.arraycopy(data, 0, result, salt.length, data.length);
+        return result;
+    }
+
+    private byte[] removeSalt(byte[] data, int saltLength) {
+        byte[] result = new byte[data.length - saltLength];
+        System.arraycopy(data, saltLength, result, 0, result.length);
+        return result;
+    }
+
     /**
      * Resolve the {@link AlgorithmParameterSpec} to use with key generation
      * @param req Key generation request
@@ -181,6 +309,10 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         if (algorithm.isRsa()) {
             MLog.d("RSA algorithm");
             return new RSAKeyGenParameterSpec(algorithm.bits, RSAKeyGenParameterSpec.F4);
+        }
+        if (algorithm.isAes()) {
+            MLog.d("AES algorithm");
+            return null; // Is set during enc/decryption
         } else {
             MLog.d("ECC algorithm");
             return new ECGenParameterSpec(algorithm.curve);
@@ -198,6 +330,8 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         if (algorithm == null) return KeyProperties.KEY_ALGORITHM_EC;
         if (algorithm.isRsa()) {
             return KeyProperties.KEY_ALGORITHM_RSA;
+        } if (algorithm.isAes()) {
+            return KeyProperties.KEY_ALGORITHM_AES;
         } else {
             return KeyProperties.KEY_ALGORITHM_EC;
         }

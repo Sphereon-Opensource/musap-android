@@ -1,5 +1,6 @@
 plugins {
     id("com.android.library")
+    id("maven-publish")
 }
 
 android {
@@ -24,6 +25,12 @@ android {
         sourceCompatibility = JavaVersion.VERSION_1_8
         targetCompatibility = JavaVersion.VERSION_1_8
     }
+
+    publishing {
+        singleVariant("release") {
+            withSourcesJar()
+        }
+    }
 }
 
 dependencies {
@@ -43,4 +50,37 @@ dependencies {
     testImplementation("org.robolectric:robolectric:4.9")
     androidTestImplementation("androidx.test.ext:junit:1.1.5")
     androidTestImplementation("androidx.test.espresso:espresso-core:3.5.1")
+}
+
+afterEvaluate {
+    publishing {
+        publications {
+            create<MavenPublication>("release") {
+                from(components["release"])
+                groupId = "fi.methics.musap"
+                artifactId = "musap-android"
+                version = "1.1.6"
+            }
+        }
+        repositories {
+            maven {
+                val releasesRepoUrl = uri("https://nexus.sphereon.com/repository/sphereon-opensource-releases/")
+                val snapshotsRepoUrl = uri("https://nexus.sphereon.com/repository/sphereon-opensource-snapshots/")
+                url = if (version.toString().endsWith("SNAPSHOT")) snapshotsRepoUrl else releasesRepoUrl
+
+
+                /**
+                 * Make sure you have the below properties in the gradle.properties file in your local .gradle folder
+                 */
+                val mavenUser: String? by project
+                val mavenPassword: String? by project
+
+
+                credentials {
+                    username = mavenUser
+                    password = mavenPassword
+                }
+            }
+        }
+    }
 }

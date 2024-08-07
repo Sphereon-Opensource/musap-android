@@ -25,6 +25,8 @@ import fi.methics.musap.sdk.internal.datatype.MusapSignature;
 import fi.methics.musap.sdk.internal.datatype.SscdInfo;
 import fi.methics.musap.sdk.internal.datatype.SignatureFormat;
 import fi.methics.musap.sdk.internal.discovery.KeyBindReq;
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 import fi.methics.musap.sdk.internal.keygeneration.KeyGenReq;
 import fi.methics.musap.sdk.internal.sign.SignatureReq;
 import fi.methics.musap.sdk.internal.util.MBase64;
@@ -120,6 +122,16 @@ public class MethicsDemoSscd implements MusapSscdInterface<MethicsDemoSettings> 
     @Override
     public MethicsDemoSettings getSettings() {
         return settings;
+    }
+
+    @Override
+    public byte[] encryptData(EncryptionReq encryptionReq) throws Exception {
+        throw new IllegalStateException("encryptData not supported for MethicsDemoSscd");
+    }
+
+    @Override
+    public byte[] decryptData(DecryptionReq decryptionReq) throws Exception {
+        throw new IllegalStateException("decryptData not supported for MethicsDemoSscd");
     }
 
     @Override
@@ -300,5 +312,4 @@ public class MethicsDemoSscd implements MusapSscdInterface<MethicsDemoSettings> 
         public boolean success;
 
     }
-
 }

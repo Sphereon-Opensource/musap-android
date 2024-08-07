@@ -9,6 +9,7 @@ public class KeyAlgorithm {
 
     public static final String PRIMITIVE_RSA = "rsa";
     public static final String PRIMITIVE_EC  = "ec";
+    public static final String PRIMITIVE_AES  = "aes";
 
     public static final String ALG_STR_RSA_2K      = "rsa2k";
     public static final String ALG_STR_RSA_4K      = "rsa4k";
@@ -17,6 +18,7 @@ public class KeyAlgorithm {
     public static final String ALG_STR_ECC_P384_K1 = "eccp384k1";
     public static final String ALG_STR_ECC_P384_R1 = "eccp384r1";
     public static final String ALG_STR_ECC_ED25519 = "ecc_ed25519";
+    public static final String ALG_AES             = "aes";
 
     public static final String CURVE_SECP256K1 = "secp256k1";
     public static final String CURVE_SECP384K1 = "secp384k1";
@@ -31,6 +33,7 @@ public class KeyAlgorithm {
     public static final KeyAlgorithm ECC_P256_R1 = new KeyAlgorithm(PRIMITIVE_EC, CURVE_SECP256R1, 256);
     public static final KeyAlgorithm ECC_P384_R1 = new KeyAlgorithm(PRIMITIVE_EC, CURVE_SECP384R1, 384);
     public static final KeyAlgorithm ECC_ED25519 = new KeyAlgorithm(PRIMITIVE_EC, CURVE_25519, 256);
+    public static final KeyAlgorithm AES         = new KeyAlgorithm(PRIMITIVE_AES, 256);
 
     public String primitive;
     public String curve;
@@ -79,6 +82,7 @@ public class KeyAlgorithm {
             case ALG_STR_ECC_P384_K1: return ECC_P384_K1;
             case ALG_STR_ECC_P384_R1: return ECC_P384_R1;
             case ALG_STR_ECC_ED25519: return ECC_ED25519;
+            case ALG_AES: return AES;
         }
         return null;
     }
@@ -89,6 +93,14 @@ public class KeyAlgorithm {
      */
     public boolean isRsa() {
         return PRIMITIVE_RSA.equalsIgnoreCase(this.primitive);
+    }
+
+    /**
+     * Is this an AES key?
+     * @return true for AES key
+     */
+    public boolean isAes() {
+        return PRIMITIVE_AES.equalsIgnoreCase(this.primitive);
     }
 
     /**

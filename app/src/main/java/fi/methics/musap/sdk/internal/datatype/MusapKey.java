@@ -1,13 +1,13 @@
 package fi.methics.musap.sdk.internal.datatype;
 
-import java.time.Instant;
-import java.util.ArrayList;
-import java.util.List;
-
 import fi.methics.musap.sdk.api.MusapClient;
 import fi.methics.musap.sdk.internal.util.IdGenerator;
 import fi.methics.musap.sdk.internal.util.MLog;
 import fi.methics.musap.sdk.internal.util.MusapSscd;
+
+import java.time.Instant;
+import java.util.ArrayList;
+import java.util.List;
 
 /**
  * MUSAP Key class.
@@ -125,7 +125,7 @@ public class MusapKey {
     public PublicKey getPublicKey() {
         return publicKey;
     }
-
+    
     /**
      * Get the certificate associated with this key
      * @return certificate (may be null)

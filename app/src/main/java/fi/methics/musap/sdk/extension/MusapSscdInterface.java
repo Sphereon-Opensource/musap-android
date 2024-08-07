@@ -4,6 +4,8 @@ import fi.methics.musap.sdk.attestation.KeyAttestation;
 import fi.methics.musap.sdk.attestation.KeyAttestationResult;
 import fi.methics.musap.sdk.attestation.NoKeyAttestation;
 import fi.methics.musap.sdk.internal.discovery.KeyBindReq;
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 import fi.methics.musap.sdk.internal.keygeneration.KeyGenReq;
 import fi.methics.musap.sdk.internal.datatype.MusapKey;
 import fi.methics.musap.sdk.internal.datatype.SscdInfo;
@@ -76,4 +78,7 @@ public interface MusapSscdInterface<T extends SscdSettings> {
      */
     T getSettings();
 
+    byte[] encryptData(EncryptionReq encryptionReq) throws Exception;
+
+    byte[] decryptData(DecryptionReq decryptionReq) throws Exception;
 }

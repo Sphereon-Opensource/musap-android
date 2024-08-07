@@ -19,6 +19,7 @@ public class KeyGenReq {
     private String keyUsage;
     private StepUpPolicy stepUpPolicy;
     private List<KeyAttribute> attributes;
+    private boolean userAuthenticationRequired;
     protected KeyAlgorithm keyAlgorithm;
     protected Activity activity;
     protected View view;
@@ -63,6 +64,10 @@ public class KeyGenReq {
         return this.keyUsage;
     }
 
+    public boolean isUserAuthenticationRequired() {
+        return userAuthenticationRequired;
+    }
+
     public void setActivity(Activity activity) {
         this.activity = activity;
     }
@@ -75,6 +80,7 @@ public class KeyGenReq {
         this.keyAlgorithm = algorithm;
     }
 
+
     public static class Builder {
         private String keyAlias;
         private String did;
@@ -85,6 +91,7 @@ public class KeyGenReq {
         private KeyAlgorithm keyAlgorithm;
         private Activity activity;
         private View view;
+        private boolean userAuthenticationRequired;
 
         public Builder setKeyAlias(String keyAlias) {
             this.keyAlias = keyAlias;
@@ -121,6 +128,11 @@ public class KeyGenReq {
             return this;
         }
 
+        public Builder setUserAuthenticationRequired(boolean userAuthenticationRequired) {
+            this.userAuthenticationRequired = userAuthenticationRequired;
+            return this;
+        }
+
         public Builder addAttribute(String key, String value) {
             this.attributes.add(new KeyAttribute(key, value));
             return this;
@@ -138,15 +150,16 @@ public class KeyGenReq {
 
         public KeyGenReq createKeyGenReq() {
             KeyGenReq req = new KeyGenReq();
-            req.keyAlias     = keyAlias;
-            req.keyUsage     = keyUsage;
-            req.did          = did;
-            req.attributes   = attributes;
+            req.keyAlias = keyAlias;
+            req.keyUsage = keyUsage;
+            req.did = did;
+            req.attributes = attributes;
             req.stepUpPolicy = stepUpPolicy;
-            req.role         = role;
+            req.role = role;
             req.keyAlgorithm = keyAlgorithm;
-            req.activity     = activity;
-            req.view         = view;
+            req.activity = activity;
+            req.view = view;
+            req.userAuthenticationRequired = userAuthenticationRequired;
             return req;
         }
 

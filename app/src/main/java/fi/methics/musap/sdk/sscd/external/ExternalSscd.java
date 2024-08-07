@@ -28,6 +28,8 @@ import fi.methics.musap.sdk.internal.datatype.SscdInfo;
 import fi.methics.musap.sdk.internal.datatype.coupling.payload.ExternalSignaturePayload;
 import fi.methics.musap.sdk.internal.datatype.coupling.ExternalSignatureResponsePayload;
 import fi.methics.musap.sdk.internal.discovery.KeyBindReq;
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 import fi.methics.musap.sdk.internal.keygeneration.KeyGenReq;
 import fi.methics.musap.sdk.internal.sign.SignatureReq;
 import fi.methics.musap.sdk.internal.util.IdGenerator;
@@ -199,6 +201,16 @@ public class ExternalSscd implements MusapSscdInterface<ExternalSscdSettings> {
                     .create();
             dialog.show();
         });
+    }
+
+    @Override
+    public byte[] encryptData(EncryptionReq encryptionReq) throws Exception {
+        throw new IllegalStateException("encryptData not implemented / supported for ExternalSscd");
+    }
+
+    @Override
+    public byte[] decryptData(DecryptionReq decryptionReq) throws Exception {
+        throw new IllegalStateException("decryptData not implemented / supported for ExternalSscd");
     }
 
 }

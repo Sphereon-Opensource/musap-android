@@ -4,6 +4,10 @@ import android.content.Context;
 
 import com.google.gson.JsonSyntaxException;
 
+import fi.methics.musap.sdk.internal.async.DecryptDataTask;
+import fi.methics.musap.sdk.internal.async.EncryptDataTask;
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 import org.bouncycastle.jce.provider.BouncyCastleProvider;
 
 import java.lang.ref.WeakReference;
@@ -109,6 +113,14 @@ public class MusapClient {
         new SignTask(callback, context.get(), null, req).executeOnExecutor(executor);
     }
 
+
+    public static void encryptData(EncryptionReq req, MusapCallback<byte[]> callback) {
+        new EncryptDataTask(callback, context.get(), null, req).executeOnExecutor(executor);
+    }
+
+    public static void decryptData(DecryptionReq req, MusapCallback<byte[]> callback) {
+        new DecryptDataTask(callback, context.get(), null, req).executeOnExecutor(executor);
+    }
 
     /**
      * List SSCDs supported by this MUSAP library. To add an SSCD to this list, call {@link #enableSscd(MusapSscdInterface, String)} first.

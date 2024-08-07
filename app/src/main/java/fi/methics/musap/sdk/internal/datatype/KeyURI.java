@@ -41,9 +41,11 @@ public class KeyURI {
     public KeyURI(MusapKey key) {
         if (key.getKeyAlias()  != null) keyUriMap.put(KEY_NAME, key.getKeyAlias());
         if (key.getAlgorithm() != null) {
-            this.addParam(KEY_ALGORITHM,  key.getAlgorithm().isEc() ? "EC" : "RSA");
+            this.addParam(KEY_ALGORITHM,  key.getAlgorithm().primitive.toUpperCase());
             this.addParam(KEY_LENGTH, key.getAlgorithm().bits + "");
-            this.addParam(ECC_CURVE, key.getAlgorithm().curve);
+            if(key.getAlgorithm().curve != null) {
+                this.addParam(ECC_CURVE, key.getAlgorithm().curve);
+            }
         }
         if (key.getCreatedDate() != null && key.getCreatedDate().toEpochMilli() != 0) {
             this.addParam(CREATED_DATE, key.getCreatedDate().toString().split("T")[0]);

@@ -20,6 +20,8 @@ import com.yubico.yubikit.piv.Slot;
 import com.yubico.yubikit.piv.jca.PivAlgorithmParameterSpec;
 import com.yubico.yubikit.piv.jca.PivProvider;
 
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -603,4 +605,13 @@ public class YubiKeySscd implements MusapSscdInterface<YubiKeySettings> {
         }
     }
 
+    @Override
+    public byte[] encryptData(EncryptionReq encryptionReq) throws Exception {
+        throw new IllegalStateException("encryptData not supported for YubikeySscd");
+    }
+
+    @Override
+    public byte[] decryptData(DecryptionReq decryptionReq) throws Exception {
+        throw new IllegalStateException("decryptData not supported for YubikeySscd");
+    }
 }

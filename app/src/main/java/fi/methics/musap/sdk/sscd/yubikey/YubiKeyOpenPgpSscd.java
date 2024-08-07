@@ -18,6 +18,8 @@ import com.yubico.yubikit.openpgp.OpenPgpCurve;
 import com.yubico.yubikit.openpgp.OpenPgpSession;
 import com.yubico.yubikit.piv.ManagementKeyType;
 
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 import org.bouncycastle.asn1.ASN1Sequence;
 import org.bouncycastle.asn1.x500.X500Name;
 import org.bouncycastle.asn1.x509.AlgorithmIdentifier;
@@ -347,6 +349,16 @@ public class YubiKeyOpenPgpSscd implements MusapSscdInterface<YubiKeySettings> {
     @Override
     public YubiKeySettings getSettings() {
         return settings;
+    }
+
+    @Override
+    public byte[] encryptData(EncryptionReq encryptionReq) throws Exception {
+        throw new IllegalStateException("encryptData not implemented / supported for YubiKeyOpenPgpSscd");
+    }
+
+    @Override
+    public byte[] decryptData(DecryptionReq decryptionReq) throws Exception {
+        throw new IllegalStateException("decryptData not implemented / supported for YubiKeyOpenPgpSscd");
     }
 
     @Override

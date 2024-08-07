@@ -11,6 +11,8 @@ import fi.methics.musap.sdk.internal.datatype.MusapKey;
 import fi.methics.musap.sdk.internal.datatype.MusapSignature;
 import fi.methics.musap.sdk.internal.datatype.SscdInfo;
 import fi.methics.musap.sdk.internal.discovery.KeyBindReq;
+import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
+import fi.methics.musap.sdk.internal.encryption.EncryptionReq;
 import fi.methics.musap.sdk.internal.keygeneration.KeyGenReq;
 import fi.methics.musap.sdk.internal.sign.SignatureReq;
 
@@ -47,6 +49,14 @@ public class MusapSscd {
      */
     public MusapSignature sign(SignatureReq req) throws Exception {
         return this.impl.sign(req);
+    }
+
+    public byte[] encryptData(EncryptionReq req) throws Exception {
+        return this.impl.encryptData(req);
+    }
+
+    public byte[] decryptData(DecryptionReq req) throws Exception {
+        return this.impl.decryptData(req);
     }
 
     /**
