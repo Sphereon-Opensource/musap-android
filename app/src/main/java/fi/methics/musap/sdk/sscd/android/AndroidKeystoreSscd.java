@@ -55,7 +55,6 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
 
     private static final String ANDROID_KEYSTORE = "AndroidKeyStore";
     private static final String AES_ALGORITHM = "AES/GCM/NoPadding";
-    private static final int GCM_TAG_LENGTH = 256;
 
     private Context context;
 
@@ -239,11 +238,8 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         final SecretKey secretKey = (SecretKey) keyStore.getKey(encryptionReq.getKey().getKeyAlias(), null);
         
         final Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
-        final byte[] iv = cipher.getIV();
-        SecureRandom random = new SecureRandom();
-        random.nextBytes(iv);
-        GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
-        cipher.init(Cipher.ENCRYPT_MODE, secretKey, spec);
+        cipher.init(Cipher.ENCRYPT_MODE, secretKey);
+        byte[] iv = cipher.getIV();
 
         byte[] dataToEncrypt;
         if (encryptionReq.getSalt() != null) {
@@ -256,24 +252,23 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
 
         return concatenate(iv, encryptedData);
     }
-
     @Override
     public byte[] decryptData(DecryptionReq decryptionReq) throws Exception {
         final KeyStore keyStore = KeyStore.getInstance(ANDROID_KEYSTORE);
         keyStore.load(null);
 
-        SecretKey secretKey = (SecretKey) keyStore.getKey(decryptionReq.getKey().getKeyAlias(), null);
+        final SecretKey secretKey = (SecretKey) keyStore.getKey(decryptionReq.getKey().getKeyAlias(), null);
 
-        final Cipher cipher = Cipher.getInstance(AES_ALGORITHM); // FIXME dedup with encryptData
-        final byte[] iv = cipher.getIV();
-        System.arraycopy(decryptionReq.getData(), 0, iv, 0, iv.length);
+        byte[] encryptedData = decryptionReq.getData();
+        byte[] iv = Arrays.copyOfRange(encryptedData, 0, 12);
+        byte[] ciphertext = Arrays.copyOfRange(encryptedData, 12, encryptedData.length);
 
-        final GCMParameterSpec spec = new GCMParameterSpec(GCM_TAG_LENGTH, iv);
+        final Cipher cipher = Cipher.getInstance(AES_ALGORITHM);
+        GCMParameterSpec spec = new GCMParameterSpec(128, iv); // FIXME const
         cipher.init(Cipher.DECRYPT_MODE, secretKey, spec);
 
-        final byte[] decryptedData = cipher.doFinal(decryptionReq.getData(), iv.length, decryptionReq.getData().length - iv.length);
+        final byte[] decryptedData = cipher.doFinal(ciphertext);
 
-        // Handle salt if necessary
         if (decryptionReq.getSalt() != null) {
             final int saltLength = decryptionReq.getSalt().length;
             return removeSalt(decryptedData, saltLength);
@@ -281,7 +276,7 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
             return decryptedData;
         }
     }
-
+    
     private byte[] concatenate(byte[] salt, byte[] data) {
         byte[] result = new byte[salt.length + data.length];
         System.arraycopy(salt, 0, result, 0, salt.length);

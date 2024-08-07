@@ -59,7 +59,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "fi.methics.musap"
                 artifactId = "musap-android"
-                version = "1.1.6"
+                version = "1.1.10"
             }
         }
         repositories {
