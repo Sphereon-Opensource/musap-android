@@ -102,6 +102,9 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         }
 
         KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(req.getKeyAlias(), purposes);
+        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+            builder = builder.setIsStrongBoxBacked(true);
+        }
 
         // If the key is for signing, configure the signature settings
         if ((purposes & KeyProperties.PURPOSE_SIGN) != 0 || (purposes & KeyProperties.PURPOSE_VERIFY) != 0) {
