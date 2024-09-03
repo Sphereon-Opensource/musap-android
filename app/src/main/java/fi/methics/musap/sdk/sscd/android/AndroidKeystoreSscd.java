@@ -1,8 +1,10 @@
 package fi.methics.musap.sdk.sscd.android;
 
 import android.content.Context;
+import android.content.pm.PackageManager;
 import android.security.keystore.KeyGenParameterSpec;
 import android.security.keystore.KeyProperties;
+import android.security.keystore.StrongBoxUnavailableException;
 import android.util.Base64;
 
 import fi.methics.musap.sdk.internal.encryption.DecryptionReq;
@@ -102,7 +104,7 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         }
 
         KeyGenParameterSpec.Builder builder = new KeyGenParameterSpec.Builder(req.getKeyAlias(), purposes);
-        if (android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P) {
+        if (isStrongBoxSupported()) {
             builder = builder.setIsStrongBoxBacked(true);
         }
 
@@ -140,8 +142,17 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         if (KeyProperties.KEY_ALGORITHM_AES.equalsIgnoreCase(algorithm)) {
             KeyGenerator keyGenerator = KeyGenerator.getInstance(algorithm, ANDROID_KEYSTORE);
             keyGenerator.init(spec);
-            keyGenerator.generateKey();
-
+            try {
+                keyGenerator.generateKey();
+            } catch (StrongBoxUnavailableException e) {
+                MLog.e("Strongbox is not available for this device, falling back to regular hardware-backed keystore");
+                builder.setIsStrongBoxBacked(false);
+                spec = builder.build();
+                keyGenerator = KeyGenerator.getInstance(algorithm, ANDROID_KEYSTORE);
+                keyGenerator.init(spec);
+                keyGenerator.generateKey();
+            }
+            
             final MusapKey generatedKey = new MusapKey.Builder()
                     .setSscdType(MusapConstants.ANDROID_KS_TYPE)
                     .setKeyAlias(req.getKeyAlias())
@@ -157,7 +168,17 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         } else {
             KeyPairGenerator kpg = KeyPairGenerator.getInstance(algorithm, ANDROID_KEYSTORE);
             kpg.initialize(spec);
-            KeyPair keyPair = kpg.generateKeyPair();
+            KeyPair keyPair;
+            try {
+                keyPair = kpg.generateKeyPair();
+            } catch (StrongBoxUnavailableException e) {
+                MLog.e("Strongbox is not available for this device, falling back to regular hardware-backed keystore");
+                builder.setIsStrongBoxBacked(false);
+                spec = builder.build();
+                kpg = KeyPairGenerator.getInstance(algorithm, ANDROID_KEYSTORE);
+                kpg.initialize(spec);
+                keyPair = kpg.generateKeyPair();
+            }
             MLog.d("Key generation successful");
 
             MusapKey generatedKey = new MusapKey.Builder()
@@ -346,4 +367,8 @@ public class AndroidKeystoreSscd implements MusapSscdInterface<AndroidKeystoreSe
         return new String(hexChars);
     }
 
+    private boolean isStrongBoxSupported() {
+        return android.os.Build.VERSION.SDK_INT >= android.os.Build.VERSION_CODES.P &&
+                context.getPackageManager().hasSystemFeature(PackageManager.FEATURE_STRONGBOX_KEYSTORE);
+    }
 }
