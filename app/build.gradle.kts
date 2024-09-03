@@ -8,7 +8,7 @@ android {
     compileSdk = 34
 
     defaultConfig {
-        minSdk = 26
+        minSdk = 28
         testInstrumentationRunner = "androidx.test.runner.AndroidJUnitRunner"
     }
 
@@ -59,7 +59,7 @@ afterEvaluate {
                 from(components["release"])
                 groupId = "fi.methics.musap"
                 artifactId = "musap-android"
-                version = "1.1.10"
+                version = "1.1.11"
             }
         }
         repositories {
